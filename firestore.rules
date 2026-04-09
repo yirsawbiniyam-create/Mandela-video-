@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - credits: number (required)
+    //   - isSubscribed: boolean (optional)
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: videos
+    // Document ID: {videoId}
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required)
+    //   - prompt: string (required)
+    //   - videoUrl: string (optional)
+    //   - status: string (required, ['pending', 'completed', 'failed'])
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'credits']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.credits is number && data.credits >= 0;
+    }
+
+    function isValidVideo(data) {
+      return data.keys().hasAll(['id', 'userId', 'prompt', 'status', 'createdAt']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.prompt is string && data.prompt.size() < 1000 &&
+             data.status in ['pending', 'completed', 'failed'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.email == "yirsawbiniyam@gmail.com");
+    }
+
+    function isRecent(time) {
+      return time is timestamp && 
+             time > request.time - duration.value(10, 'm') &&
+             time < request.time + duration.value(10, 'm');
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidImage(data) {
+      return data.keys().hasAll(['id', 'userId', 'prompt', 'imageUrl', 'createdAt']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.prompt is string &&
+             data.imageUrl is string &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll(['id', 'userId', 'amount', 'type', 'status', 'createdAt']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.amount is number &&
+             data.type in ['credits', 'single_video'] &&
+             data.status in ['pending', 'confirmed'] &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /videos/{videoId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid && 
+                      isValidVideo(request.resource.data) &&
+                      isRecent(request.resource.data.createdAt);
+      allow update: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow delete: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+
+    match /images/{imageId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid && 
+                      isValidImage(request.resource.data) &&
+                      isRecent(request.resource.data.createdAt);
+      allow delete: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid && 
+                      isValidPayment(request.resource.data) &&
+                      isRecent(request.resource.data.createdAt);
+      allow update: if isAdmin();
+    }
+  }
+}

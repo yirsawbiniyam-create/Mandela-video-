@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and subscription data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "credits": { "type": "number", "description": "Number of video generation credits remaining" },
+        "isSubscribed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "credits"]
+    },
+    "Video": {
+      "title": "Video",
+      "description": "Metadata for generated videos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "prompt": { "type": "string" },
+        "videoUrl": { "type": "string", "format": "uri" },
+        "sourceImageUrl": { "type": "string", "format": "uri", "description": "Optional source image for image-to-video" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "isPaid": { "type": "boolean", "description": "Whether the individual video has been paid for" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "prompt", "status", "createdAt"]
+    },
+    "Image": {
+      "title": "Image",
+      "description": "Metadata for generated images",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "prompt": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "prompt", "imageUrl", "createdAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Payment records for credits or video downloads",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "type": { "type": "string", "enum": ["credits", "single_video"] },
+        "videoId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed"] },
+        "paymentMethod": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "amount", "type", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    },
+    "/videos/{videoId}": {
+      "schema": "Video",
+      "description": "Generated video records"
+    },
+    "/images/{imageId}": {
+      "schema": "Image",
+      "description": "Generated image records"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Payment transactions"
+    }
+  }
+}
