@@ -48,7 +48,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider } from './lib/AuthContext';
 
 function MainApp() {
-  const { user, dbUser, login, logout, loading: authLoading } = useAuth();
+  const { user, guestId, dbUser, login, logout, loading: authLoading } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [videos, setVideos] = useState<any[]>([]);
@@ -62,6 +62,9 @@ function MainApp() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [pendingPaymentInfo, setPendingPaymentInfo] = useState<{ amount: number, type: 'credits' | 'single_video', videoId?: string } | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean>(true);
+
+  const effectiveUserId = user?.uid || guestId;
+  const effectiveEmail = user?.email || "guest@aether.ai";
 
   useEffect(() => {
     const checkKey = async () => {
@@ -87,10 +90,10 @@ function MainApp() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      const unsubVideos = subscribeToVideos(user.uid, setVideos);
-      const unsubImages = subscribeToImages(user.uid, setImages);
-      const unsubPayments = subscribeToUserPayments(user.uid, setPayments);
+    if (effectiveUserId) {
+      const unsubVideos = subscribeToVideos(effectiveUserId, setVideos);
+      const unsubImages = subscribeToImages(effectiveUserId, setImages);
+      const unsubPayments = subscribeToUserPayments(effectiveUserId, setPayments);
       
       let unsubAllPayments: any;
       if (isAdmin) {
@@ -104,7 +107,7 @@ function MainApp() {
         if (unsubAllPayments) unsubAllPayments();
       };
     }
-  }, [user, isAdmin]);
+  }, [effectiveUserId, isAdmin]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,8 +121,8 @@ function MainApp() {
   };
 
   const handleGenerate = async () => {
-    if (!user) {
-      toast.error("እባክዎን ለማመንጨት ይግቡ");
+    if (!effectiveUserId) {
+      toast.error("እባክዎን ለማመንጨት ይግቡ ወይም እንግዳ ሆነው ይቀጥሉ");
       return;
     }
 
@@ -128,7 +131,8 @@ function MainApp() {
       return;
     }
 
-    if (dbUser?.credits <= 0) {
+    // Guests don't use credits, they pay per download
+    if (user && dbUser?.credits <= 0) {
       toast.error("በቂ ክሬዲት የለዎትም። እባክዎን ያሻሽሉ።");
       setActiveTab('billing');
       return;
@@ -139,14 +143,14 @@ function MainApp() {
     try {
       if (genType === 'image') {
         const imageUrl = await generateImage(prompt);
-        await saveImage(user.uid, prompt, imageUrl);
-        await deductCredit(user.uid);
+        await saveImage(effectiveUserId, prompt, imageUrl);
+        if (user) await deductCredit(user.uid);
         toast.success("ምስል ተፈጥሯል!");
         setPrompt('');
       } else {
         const videoId = `vid_${Date.now()}`;
-        await deductCredit(user.uid);
-        await saveVideo(user.uid, prompt, videoId, selectedImage || undefined);
+        if (user) await deductCredit(user.uid);
+        await saveVideo(effectiveUserId, prompt, videoId, selectedImage || undefined);
         toast.info("ማመንጨት ተጀምሯል! ጥቂት ደቂቃዎችን ሊወስድ ይችላል።");
 
         const operation = await generateVideo(prompt, selectedImage || undefined);
@@ -183,8 +187,8 @@ function MainApp() {
   };
 
   const initiatePayment = async (amount: number, type: 'credits' | 'single_video', videoId?: string) => {
-    if (!user) return;
-    const paymentId = await createPayment(user.uid, user.email!, amount, type, videoId);
+    if (!effectiveUserId) return;
+    const paymentId = await createPayment(effectiveUserId, effectiveEmail, amount, type, videoId);
     setPendingPaymentInfo({ amount, type, videoId });
     setPaymentModalOpen(true);
     toast.info("የክፍያ ጥያቄ ተፈጥሯል። እባክዎን መመሪያዎቹን ይከተሉ።");
@@ -200,42 +204,6 @@ function MainApp() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-950">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-white p-4 overflow-hidden relative">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 blur-[120px] rounded-full" />
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="z-10 text-center max-w-2xl"
-        >
-          <div className="flex items-center justify-center mb-6">
-            <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20">
-              <VideoIcon className="w-10 h-10 text-white" />
-            </div>
-          </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
-            ኤዘር ኤአይ ስቱዲዮ
-          </h1>
-          <p className="text-xl text-slate-400 mb-10 leading-relaxed">
-            ከጽሑፍ ወይም ከፎቶዎች ሲኒማቲክ ቪዲዮዎችን እና አስደናቂ ምስሎችን ይፍጠሩ።
-            በጎግል ቀጣይ ትውልድ የኤአይ ሞዴሎች የተጎላበተ።
-          </p>
-          
-          <Button 
-            onClick={login}
-            size="lg" 
-            className="h-14 px-8 text-lg bg-white text-black hover:bg-slate-200 rounded-full transition-all"
-          >
-            በነጻ ይጀምሩ
-          </Button>
-        </motion.div>
       </div>
     );
   }
@@ -261,14 +229,25 @@ function MainApp() {
                 አስተዳዳሪ
               </Button>
             )}
-            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 rounded-full border border-slate-800">
-              <Coins className="w-4 h-4 text-amber-400" />
-              <span className="text-sm font-medium">{dbUser?.credits || 0} ክሬዲቶች</span>
-            </div>
-            
-            <Button variant="ghost" size="icon" onClick={logout} className="text-slate-400 hover:text-white">
-              <LogOut className="w-5 h-5" />
-            </Button>
+            {user ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 rounded-full border border-slate-800">
+                  <Coins className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-medium">{dbUser?.credits || 0} ክሬዲቶች</span>
+                </div>
+                
+                <Button variant="ghost" size="icon" onClick={logout} className="text-slate-400 hover:text-white">
+                  <LogOut className="w-5 h-5" />
+                </Button>
+              </>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="text-slate-400 border-slate-800">እንግዳ</Badge>
+                <Button size="sm" onClick={login} className="bg-blue-600 hover:bg-blue-500 text-white rounded-full">
+                  ግባ
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -294,6 +273,13 @@ function MainApp() {
 
           <TabsContent value="create" className="mt-0">
             <div className="max-w-3xl mx-auto space-y-8">
+              {!user && (
+                <div className="bg-blue-600/10 border border-blue-500/30 rounded-2xl p-4 flex items-center gap-3 text-sm text-blue-400">
+                  <Sparkles className="w-5 h-5 shrink-0" />
+                  <p>እንደ እንግዳ እየተጠቀሙ ነው። በነጻ ማመንጨት ይችላሉ፣ ነገር ግን ለማውረድ መክፈል ይኖርብዎታል።</p>
+                </div>
+              )}
+              
               {!hasApiKey && (
                 <Card className="bg-amber-600/10 border-amber-500/50">
                   <CardHeader className="pb-2">
@@ -423,9 +409,24 @@ function MainApp() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {videos.map((video) => (
                     <Card key={video.id} className="bg-slate-900 border-slate-800 overflow-hidden">
-                      <div className="aspect-video bg-slate-950 relative">
+                      <div className={`aspect-video bg-slate-950 relative watermark-container ${!video.isPaid ? 'no-download' : ''}`} onContextMenu={(e) => !video.isPaid && e.preventDefault()}>
                         {video.status === 'completed' ? (
-                          <video src={video.videoUrl} className="w-full h-full object-cover" controls />
+                          <>
+                            <video 
+                              src={video.videoUrl} 
+                              className={`w-full h-full object-cover ${!video.isPaid ? 'pointer-events-none' : ''}`} 
+                              controls={video.isPaid} 
+                              autoPlay={!video.isPaid}
+                              loop={!video.isPaid}
+                              muted={!video.isPaid}
+                              playsInline
+                            />
+                            {!video.isPaid && (
+                              <div className="watermark-overlay">
+                                <span className="watermark-text">AETHER AI</span>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <div className="flex items-center justify-center h-full">
                             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -465,14 +466,25 @@ function MainApp() {
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {images.map((image) => (
-                    <div key={image.id} className="aspect-square rounded-xl overflow-hidden border border-slate-800 relative group">
+                    <div key={image.id} className={`aspect-square rounded-xl overflow-hidden border border-slate-800 relative group watermark-container ${!image.isPaid ? 'no-download' : ''}`} onContextMenu={(e) => !image.isPaid && e.preventDefault()}>
                       <img src={image.imageUrl} alt={image.prompt} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center p-2">
-                        <Button size="icon" variant="ghost" asChild>
-                          <a href={image.imageUrl} download target="_blank" rel="noreferrer">
-                            <Download className="w-4 h-4" />
-                          </a>
-                        </Button>
+                      {!image.isPaid && (
+                        <div className="watermark-overlay">
+                          <span className="watermark-text text-sm">AETHER AI</span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center p-2 gap-2">
+                        {image.isPaid ? (
+                          <Button size="icon" variant="ghost" asChild>
+                            <a href={image.imageUrl} download target="_blank" rel="noreferrer">
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </Button>
+                        ) : (
+                          <Button size="sm" className="w-full" onClick={() => initiatePayment(5, 'single_video', image.id)}>
+                            <Lock className="w-4 h-4 mr-2" /> ክፈት (5 ብር)
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

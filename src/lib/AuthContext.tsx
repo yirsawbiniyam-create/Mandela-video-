@@ -5,6 +5,7 @@ import { getOrCreateUser, subscribeToUser } from './db';
 
 interface AuthContextType {
   user: User | null;
+  guestId: string | null;
   dbUser: any | null;
   loading: boolean;
   login: () => Promise<void>;
@@ -15,10 +16,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [guestId, setGuestId] = useState<string | null>(null);
   const [dbUser, setDbUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Initialize guest ID if not present
+    let gid = localStorage.getItem('guest_id');
+    if (!gid) {
+      gid = `guest_${Math.random().toString(36).substring(2, 15)}`;
+      localStorage.setItem('guest_id', gid);
+    }
+    setGuestId(gid);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -59,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, dbUser, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, guestId, dbUser, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

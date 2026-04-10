@@ -101,6 +101,7 @@ export async function saveImage(userId: string, prompt: string, imageUrl: string
       userId,
       prompt,
       imageUrl,
+      isPaid: false,
       createdAt: Timestamp.now()
     });
   } catch (error) {
@@ -168,6 +169,15 @@ export async function markVideoAsPaid(videoId: string) {
   }
 }
 
+export async function markImageAsPaid(imageId: string) {
+  const imageRef = doc(db, 'images', imageId);
+  try {
+    await updateDoc(imageRef, { isPaid: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `images/${imageId}`);
+  }
+}
+
 export async function confirmPayment(paymentId: string, userId: string, type: string, amount: number, videoId?: string) {
   const paymentRef = doc(db, 'payments', paymentId);
   try {
@@ -182,7 +192,11 @@ export async function confirmPayment(paymentId: string, userId: string, type: st
         await updateDoc(userRef, { credits: currentCredits + newCredits });
       }
     } else if (type === 'single_video' && videoId) {
-      await markVideoAsPaid(videoId);
+      if (videoId.startsWith('vid_')) {
+        await markVideoAsPaid(videoId);
+      } else if (videoId.startsWith('img_')) {
+        await markImageAsPaid(videoId);
+      }
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `payments/${paymentId}`);

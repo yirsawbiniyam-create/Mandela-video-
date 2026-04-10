@@ -3,6 +3,38 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+.watermark-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.watermark-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.2;
+  user-select: none;
+}
+
+.watermark-text {
+  font-size: 3rem;
+  font-weight: 800;
+  color: white;
+  transform: rotate(-30deg);
+  white-space: nowrap;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+  letter-spacing: 0.2em;
+}
+
+.no-download {
+  pointer-events: none;
+  user-select: none;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
