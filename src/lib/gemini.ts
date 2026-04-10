@@ -1,11 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 
 function getAI() {
-  // Use process.env.API_KEY if available (selected via dialog), 
-  // otherwise fallback to GEMINI_API_KEY (environment default)
-  const apiKey = (process.env as any).API_KEY || process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("API key not found. Please select an API key.");
+  // Try different possible environment variable names
+  const apiKey = 
+    (process.env as any).API_KEY || 
+    (process.env as any).GEMINI_API_KEY || 
+    (import.meta as any).env?.VITE_GEMINI_API_KEY;
+
+  if (!apiKey || apiKey === "undefined" || apiKey === "null") {
+    throw new Error("የኤፒአይ ቁልፍ አልተገኘም። እባክዎን በ Secrets panel ውስጥ 'API_KEY' በሚል ስም ያስገቡ።");
   }
   return new GoogleGenAI({ apiKey });
 }

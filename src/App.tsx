@@ -466,22 +466,22 @@ function MainApp() {
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {images.map((image) => (
-                    <div key={image.id} className={`aspect-square rounded-xl overflow-hidden border border-slate-800 relative group watermark-container ${!image.isPaid ? 'no-download' : ''}`} onContextMenu={(e) => !image.isPaid && e.preventDefault()}>
-                      <img src={image.imageUrl} alt={image.prompt} className="w-full h-full object-cover" />
+                    <div key={image.id} className="aspect-square rounded-xl overflow-hidden border border-slate-800 relative group watermark-container" onContextMenu={(e) => !image.isPaid && e.preventDefault()}>
+                      <img src={image.imageUrl} alt={image.prompt} className={`w-full h-full object-cover ${!image.isPaid ? 'no-download' : ''}`} />
                       {!image.isPaid && (
                         <div className="watermark-overlay">
                           <span className="watermark-text text-sm">AETHER AI</span>
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center p-2 gap-2">
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center p-2 gap-2 z-20">
                         {image.isPaid ? (
-                          <Button size="icon" variant="ghost" asChild>
+                          <Button size="icon" variant="ghost" asChild className="pointer-events-auto">
                             <a href={image.imageUrl} download target="_blank" rel="noreferrer">
                               <Download className="w-4 h-4" />
                             </a>
                           </Button>
                         ) : (
-                          <Button size="sm" className="w-full" onClick={() => initiatePayment(5, 'single_video', image.id)}>
+                          <Button size="sm" className="w-full pointer-events-auto" onClick={() => initiatePayment(5, 'single_video', image.id)}>
                             <Lock className="w-4 h-4 mr-2" /> ክፈት (5 ብር)
                           </Button>
                         )}
@@ -523,7 +523,7 @@ function MainApp() {
                 </CardHeader>
                 <CardContent className="text-sm space-y-2 text-slate-300">
                   <p>1. ጥቅል ይምረጡ ወይም አንድ ቪዲዮ ይክፈቱ።</p>
-                  <p>2. ገንዘቡን ወደዚህ ያስተላልፉ፦ <strong>Telebirr: 09XXXXXXXX</strong> ወይም <strong>CBE: 1000XXXXXXXX</strong>።</p>
+                  <p>2. ገንዘቡን ወደዚህ ያስተላልፉ፦ <strong>Telebirr: 0927145171</strong> ወይም <strong>CBE: 1000XXXXXXXX</strong>።</p>
                   <p>3. አስተዳዳሪው ክፍያውን ካረጋገጠ በኋላ ክሬዲቶችዎ ይታከላሉ (ብዙውን ጊዜ በ30 ደቂቃ ውስጥ)።</p>
                 </CardContent>
               </Card>
@@ -607,7 +607,7 @@ function MainApp() {
                     <p className="text-sm text-slate-400">በትክክል <strong>{pendingPaymentInfo?.amount} ብር</strong> ወደዚህ ያስተላልፉ፦</p>
                   </div>
                   <div className="ml-9 p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                    <p className="text-sm font-mono">Telebirr: 09XXXXXXXX</p>
+                    <p className="text-sm font-mono">Telebirr: 0927145171</p>
                     <p className="text-sm font-mono">CBE: 1000XXXXXXXX</p>
                   </div>
                   
